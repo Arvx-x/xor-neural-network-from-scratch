@@ -101,37 +101,57 @@ Training uses **gradient descent** with **backpropagation** (chain rule applied 
 
 ### Forward Pass
 
-$$Z^{[1]} = X W^{[1]} + b^{[1]}$$
-$$A^{[1]} = \sigma(Z^{[1]})$$
-$$Z^{[2]} = A^{[1]} W^{[2]} + b^{[2]}$$
-$$\hat{y} = \sigma(Z^{[2]})$$
+```math
+Z^{[1]} = X W^{[1]} + b^{[1]}
+```
+```math
+A^{[1]} = \sigma(Z^{[1]})
+```
+```math
+Z^{[2]} = A^{[1]} W^{[2]} + b^{[2]}
+```
+```math
+\hat{y} = \sigma(Z^{[2]})
+```
 
 where $\sigma(z) = \frac{1}{1 + e^{-z}}$ and its derivative is $\sigma'(z) = \sigma(z)(1 - \sigma(z))$.
 
 ### Loss Functions
 
 **Mean Squared Error (MSE):**
-$$\mathcal{L}_{MSE} = \frac{1}{m}\sum_{i=1}^{m}(y_i - \hat{y}_i)^2$$
+```math
+\mathcal{L}_{MSE} = \frac{1}{m}\sum_{i=1}^{m}(y_i - \hat{y}_i)^2
+```
 
 **Binary Cross-Entropy (BCE):**
-$$\mathcal{L}_{BCE} = -\frac{1}{m}\sum_{i=1}^{m}\left[y_i \log(\hat{y}_i) + (1-y_i)\log(1-\hat{y}_i)\right]$$
+```math
+\mathcal{L}_{BCE} = -\frac{1}{m}\sum_{i=1}^{m}\left[y_i \log(\hat{y}_i) + (1-y_i)\log(1-\hat{y}_i)\right]
+```
 
 ### Output Layer Gradients
 
 The critical difference between the two loss functions is visible in the output-layer gradient.
 
 **With MSE:**
-$$\frac{\partial \mathcal{L}}{\partial Z^{[2]}} = \frac{2}{m}(\hat{y} - y) \cdot \sigma'(Z^{[2]}) = \frac{2}{m}(\hat{y} - y) \cdot \hat{y}(1-\hat{y})$$
+```math
+\frac{\partial \mathcal{L}}{\partial Z^{[2]}} = \frac{2}{m}(\hat{y} - y) \cdot \sigma'(Z^{[2]}) = \frac{2}{m}(\hat{y} - y) \cdot \hat{y}(1-\hat{y})
+```
 
 **With BCE:**
-$$\frac{\partial \mathcal{L}}{\partial Z^{[2]}} = \frac{1}{m}(\hat{y} - y)$$
+```math
+\frac{\partial \mathcal{L}}{\partial Z^{[2]}} = \frac{1}{m}(\hat{y} - y)
+```
 
 The sigmoid derivative $\hat{y}(1-\hat{y})$ cancels analytically in the BCE case, yielding a clean error signal. In the MSE case, this term multiplies the gradient and approaches zero whenever $\hat{y}$ saturates toward 0 or 1—the root cause of the **vanishing gradient problem** in MSE-trained sigmoid networks.
 
 ### Weight Updates (Gradient Descent)
 
-$$W^{[2]} \leftarrow W^{[2]} - \alpha \cdot (A^{[1]})^\top \delta^{[2]}$$
-$$W^{[1]} \leftarrow W^{[1]} - \alpha \cdot X^\top \delta^{[1]}$$
+```math
+W^{[2]} \leftarrow W^{[2]} - \alpha \cdot (A^{[1]})^\top \delta^{[2]}
+```
+```math
+W^{[1]} \leftarrow W^{[1]} - \alpha \cdot X^\top \delta^{[1]}
+```
 
 where $\alpha$ is the learning rate and $\delta^{[\ell]}$ denotes the layer-$\ell$ error term.
 
