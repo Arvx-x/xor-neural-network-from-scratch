@@ -1,0 +1,4 @@
+# plots/
+# Generated plots land here. Files tracked by name but not committed.
+*.png
+!.gitkeep
