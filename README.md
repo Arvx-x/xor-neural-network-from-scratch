@@ -55,8 +55,6 @@ xor-nn-from-scratch/
 │
 ├── numpy_xor/
 │   ├── model.py              # XORModel class: forward(), backward(), train()
-│   └── numpy_xor.py          # Original flat script (reference)
-│
 ├── pytorch_xor/
 │   └── model.py              # XORNet (nn.Module): 2→2→1, raw logit output
 │
