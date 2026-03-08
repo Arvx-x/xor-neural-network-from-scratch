@@ -321,7 +321,15 @@ We define the network parameters as follows:
 
 **Hidden-layer weight matrix** $W^{[1]}$ (2×2) and **output-layer weight vector** $W^{[2]}$ (2×1):
 
-$$W^{[1]} = \begin{bmatrix} w_{11} & w_{21} \\ w_{12} & w_{22} \end{bmatrix}, \qquad W^{[2]} = \begin{bmatrix} v_1 \\ v_2 \end{bmatrix}$$
+| | Col 1 | Col 2 |
+|---|---|---|
+| **W₁** | $w_{11}$ | $w_{21}$ |
+| | $w_{12}$ | $w_{22}$ |
+
+| | Col 1 |
+|---|---|
+| **W₂** | $v_1$ |
+| | $v_2$ |
 
 - $w_{ij}$ are the weights connecting input $j$ to hidden neuron $i$.
 - $v_1, v_2$ are the weights connecting hidden neurons 1 and 2 to the output neuron.
@@ -337,17 +345,17 @@ $$W^{[1]} = \begin{bmatrix} w_{11} & w_{21} \\ w_{12} & w_{22} \end{bmatrix}, \q
 
 Each hidden neuron computes a weighted sum of the inputs plus a bias:
 
-$$z_1 = w_{11}\,x_1 + w_{12}\,x_2 + b_1^{[1]}$$
+$$z_1 = w_{11} \cdot x_1 + w_{12} \cdot x_2 + b_1^{[1]}$$
 
 > Hidden neuron 1's pre-activation: weighted combination of both inputs.
 
-$$z_2 = w_{21}\,x_1 + w_{22}\,x_2 + b_2^{[1]}$$
+$$z_2 = w_{21} \cdot x_1 + w_{22} \cdot x_2 + b_2^{[1]}$$
 
 > Hidden neuron 2's pre-activation: same structure, different weights.
 
 The output neuron takes the hidden activations $a_1 = \sigma(z_1)$, $a_2 = \sigma(z_2)$ and computes:
 
-$$z_3 = v_1\,a_1 + v_2\,a_2 + b^{[2]}$$
+$$z_3 = v_1 \cdot a_1 + v_2 \cdot a_2 + b^{[2]}$$
 
 > Output pre-activation: weighted sum of hidden-layer activations.
 
@@ -357,7 +365,7 @@ The element-wise equations above can be written compactly as matrix operations:
 
 **Input → Hidden (Layer 1):**
 
-$$Z^{[1]} = X\,W^{[1]} + b^{[1]}$$
+$$Z^{[1]} = X \cdot W^{[1]} + b^{[1]}$$
 
 > Each row of $Z^{[1]}$ is the pre-activation vector for one training sample. $X$ is the (m×2) input matrix.
 
@@ -367,7 +375,7 @@ $$A^{[1]} = \sigma(Z^{[1]})$$
 
 **Hidden → Output (Layer 2):**
 
-$$Z^{[2]} = A^{[1]}\,W^{[2]} + b^{[2]}$$
+$$Z^{[2]} = A^{[1]} \cdot W^{[2]} + b^{[2]}$$
 
 > The output pre-activation, computed from hidden activations.
 
@@ -377,11 +385,11 @@ $$\hat{y} = \sigma(Z^{[2]})$$
 
 ---
 
-### C. Loss Function Gradient (MSE)
+### C1. Loss Function Gradient — MSE
 
 We use Mean Squared Error as the loss:
 
-$$\mathcal{L} = \frac{1}{m}\sum_{i=1}^{m}(\hat{y}_i - y_i)^2$$
+$$\mathcal{L}_{MSE} = \frac{1}{m}\sum_{i=1}^{m}(\hat{y}_i - y_i)^2$$
 
 Taking the derivative with respect to the prediction $\hat{y}$:
 
@@ -389,11 +397,78 @@ $$\frac{\partial \mathcal{L}}{\partial \hat{y}} = \frac{2}{m}(\hat{y} - y)$$
 
 > This is the starting point of backpropagation — how much the loss changes when the prediction changes. The factor $\frac{2}{m}$ comes from differentiating the squared term and averaging over $m$ samples.
 
-We also note the derivative of the sigmoid output with respect to its pre-activation:
+Now applying the chain rule to get the gradient w.r.t. the pre-activation $Z^{[2]}$:
 
-$$\frac{\partial \hat{y}}{\partial Z^{[2]}} = \sigma'(Z^{[2]}) = \sigma(Z^{[2]})(1 - \sigma(Z^{[2]}))$$
+$$\frac{\partial \mathcal{L}}{\partial Z^{[2]}} = \frac{\partial \mathcal{L}}{\partial \hat{y}} \cdot \frac{\partial \hat{y}}{\partial Z^{[2]}} = \frac{2}{m}(\hat{y} - y) \cdot \sigma'(Z^{[2]})$$
 
-> The sigmoid derivative, which will be used in the chain rule.
+Since $\hat{y} = \sigma(Z^{[2]})$ and $\sigma'(z) = \sigma(z)(1-\sigma(z)) = \hat{y}(1-\hat{y})$:
+
+$$\boxed{\;dZ^{[2]}_{MSE} = \frac{2}{m}(\hat{y} - y) \cdot \hat{y}(1-\hat{y})\;}$$
+
+> ⚠️ The $\hat{y}(1-\hat{y})$ **sigmoid derivative term remains in the gradient**. This is the root cause of the vanishing gradient problem — when $\hat{y}$ saturates near 0 or 1, this term approaches zero, killing the gradient signal.
+
+---
+
+### C2. Loss Function Gradient — BCE (Full Derivation)
+
+Binary Cross-Entropy loss:
+
+$$\mathcal{L}_{BCE} = -\left[y \cdot \log(\hat{y}) + (1-y) \cdot \log(1-\hat{y})\right]$$
+
+**Step 1:** Differentiate w.r.t. $\hat{y}$ using the chain rule on each term:
+
+$$\frac{\partial \mathcal{L}}{\partial \hat{y}} = -\left[y \cdot \frac{1}{\hat{y}} + (1-y) \cdot \frac{-1}{1-\hat{y}}\right]$$
+
+> The first term differentiates $\log(\hat{y})$ → $\frac{1}{\hat{y}}$. The second differentiates $\log(1-\hat{y})$ → $\frac{-1}{1-\hat{y}}$.
+
+**Step 2:** Simplify:
+
+$$\frac{\partial \mathcal{L}}{\partial \hat{y}} = -\left[\frac{y}{\hat{y}} - \frac{1-y}{1-\hat{y}}\right]$$
+
+$$\frac{\partial \mathcal{L}}{\partial \hat{y}} = \frac{1-y}{1-\hat{y}} - \frac{y}{\hat{y}}$$
+
+> Flipping the sign distributes the negative sign.
+
+**Step 3:** Apply the chain rule to get the gradient w.r.t. $Z^{[2]}$:
+
+$$\frac{\partial \mathcal{L}}{\partial Z^{[2]}} = \frac{\partial \mathcal{L}}{\partial \hat{y}} \cdot \frac{\partial \hat{y}}{\partial Z^{[2]}}$$
+
+Since $\hat{y} = \sigma(Z^{[2]})$, we know $\frac{\partial \hat{y}}{\partial Z^{[2]}} = \sigma'(Z^{[2]}) = \hat{y}(1-\hat{y})$:
+
+$$\frac{\partial \mathcal{L}}{\partial Z^{[2]}} = \left(\frac{1-y}{1-\hat{y}} - \frac{y}{\hat{y}}\right) \cdot \hat{y}(1-\hat{y})$$
+
+**Step 4:** Expand and simplify — this is where the magic happens:
+
+$$\frac{\partial \mathcal{L}}{\partial Z^{[2]}} = (1-y) \cdot \hat{y} - y \cdot (1-\hat{y})$$
+
+> Distributing $\hat{y}(1-\hat{y})$ into each fraction cancels the denominators: $\frac{1-y}{1-\hat{y}} \cdot \hat{y}(1-\hat{y}) = (1-y)\hat{y}$ and $\frac{y}{\hat{y}} \cdot \hat{y}(1-\hat{y}) = y(1-\hat{y})$.
+
+$$\frac{\partial \mathcal{L}}{\partial Z^{[2]}} = \hat{y} - \hat{y}y - y + y\hat{y} = \hat{y} - y$$
+
+$$\boxed{\;dZ^{[2]}_{BCE} = \hat{y} - y\;}$$
+
+> ✅ **The sigmoid derivative $\hat{y}(1-\hat{y})$ cancels out completely!** The final gradient is simply the prediction error — clean, unsaturated, and proportional purely to how wrong the prediction is.
+
+---
+
+### C3. MSE vs BCE — Why Vanishing Gradients Occur
+
+Placing the two output-layer gradients side by side:
+
+| Loss | Output gradient $dZ^{[2]}$ | Sigmoid derivative present? |
+|------|---------------------------|----------------------------|
+| **MSE** | $\frac{2}{m}(\hat{y} - y) \cdot \hat{y}(1-\hat{y})$ | ✅ Yes — **dampens gradient** |
+| **BCE** | $\hat{y} - y$ | ❌ No — **cancels analytically** |
+
+**The problem with MSE:** The sigmoid derivative $\hat{y}(1-\hat{y})$ has a maximum value of $0.25$ (at $\hat{y}=0.5$) and approaches $0$ as $\hat{y} \to 0$ or $\hat{y} \to 1$. This means:
+
+- At initialization ($\hat{y} \approx 0.5$): gradient is scaled by at most $0.25$ — already weakened by 4×
+- As training progresses and predictions become more confident: the gradient gets crushed toward zero
+- With a low learning rate (e.g. $\alpha = 0.01$), the effective step size $\alpha \cdot 0.25 = 0.0025$ is too small to escape the plateau
+
+**Why BCE doesn't suffer:** The algebraic cancellation in Step 4 removes $\hat{y}(1-\hat{y})$ entirely. The gradient $(\hat{y} - y)$ responds linearly to prediction error regardless of how saturated the sigmoid is. A confident wrong prediction ($\hat{y} = 0.99$, $y = 0$) produces a gradient of $0.99$ with BCE, but only $0.99 \cdot 0.99 \cdot 0.01 \approx 0.0098$ with MSE — **a 100× difference**.
+
+> **This is why BCE + sigmoid is the natural pairing for binary classification.** The cross-entropy loss was specifically designed to produce gradients that cancel the sigmoid's saturation behaviour.
 
 ---
 
@@ -407,19 +482,11 @@ $$\frac{\partial \mathcal{L}}{\partial Z^{[2]}} = \frac{\partial \mathcal{L}}{\p
 
 > Split into: (how loss changes with prediction) × (how prediction changes with pre-activation).
 
-Substituting:
-
-$$\frac{\partial \mathcal{L}}{\partial Z^{[2]}} = \frac{\partial \mathcal{L}}{\partial \hat{y}} \cdot \sigma'(Z^{[2]})$$
-
-Since $\hat{y} = \sigma(Z^{[2]})$, the sigmoid derivative expands to $\hat{y}(1-\hat{y})$:
-
-$$\frac{\partial \mathcal{L}}{\partial Z^{[2]}} = \frac{\partial \mathcal{L}}{\partial \hat{y}} \cdot \sigma(Z^{[2]})(1 - \sigma(Z^{[2]}))$$
-
-Substituting $\frac{\partial \mathcal{L}}{\partial \hat{y}} = \frac{2}{m}(\hat{y}-y)$ and $\sigma(Z^{[2]}) = \hat{y}$:
+For MSE (derived in C1):
 
 $$\boxed{\;dZ^{[2]} = \frac{2}{m}(\hat{y} - y) \cdot \hat{y}(1-\hat{y})\;}$$
 
-> **This is the output error signal (denoted $dZ^{[2]}$).** It encodes how wrong the prediction was, scaled by the sigmoid derivative. Note the $\hat{y}(1-\hat{y})$ term — this is what causes the **vanishing gradient problem** with MSE, because it approaches zero when $\hat{y}$ saturates near 0 or 1.
+> **This is the output error signal.** It encodes how wrong the prediction was, scaled by the sigmoid derivative. Note the $\hat{y}(1-\hat{y})$ term — this is what causes the **vanishing gradient problem** with MSE.
 
 #### Step 2: Gradient of loss w.r.t. output weights $W^{[2]}$
 
@@ -427,7 +494,7 @@ $$\frac{\partial \mathcal{L}}{\partial W^{[2]}} = \frac{\partial \mathcal{L}}{\p
 
 > Chain rule: (output error) × (how pre-activation changes with weights).
 
-Since $Z^{[2]} = A^{[1]} W^{[2]} + b^{[2]}$, we have $\frac{\partial Z^{[2]}}{\partial W^{[2]}} = A^{[1]}$. For correct matrix dimensions (we need the result to be the same shape as $W^{[2]}$, i.e. 2×1), we transpose $A^{[1]}$:
+Since $Z^{[2]} = A^{[1]} \cdot W^{[2]} + b^{[2]}$, we have $\frac{\partial Z^{[2]}}{\partial W^{[2]}} = A^{[1]}$. For correct matrix dimensions (we need the result to be the same shape as $W^{[2]}$, i.e. 2×1), we transpose $A^{[1]}$:
 
 $$\boxed{\;dW^{[2]} = (A^{[1]})^\top \cdot dZ^{[2]}\;}$$
 
@@ -453,7 +520,7 @@ $$\frac{\partial \mathcal{L}}{\partial A^{[1]}} = \frac{\partial \mathcal{L}}{\p
 
 > How much each hidden activation contributed to the output error.
 
-Since $Z^{[2]} = A^{[1]} W^{[2]} + b^{[2]}$, we have $\frac{\partial Z^{[2]}}{\partial A^{[1]}} = W^{[2]}$. For correct matrix dimensions (result must be same shape as $A^{[1]}$, i.e. m×2), we transpose $W^{[2]}$:
+Since $Z^{[2]} = A^{[1]} \cdot W^{[2]} + b^{[2]}$, we have $\frac{\partial Z^{[2]}}{\partial A^{[1]}} = W^{[2]}$. For correct matrix dimensions (result must be same shape as $A^{[1]}$, i.e. m×2), we transpose $W^{[2]}$:
 
 $$\boxed{\;dA^{[1]} = dZ^{[2]} \cdot (W^{[2]})^\top\;}$$
 
@@ -487,7 +554,7 @@ $$\frac{\partial \mathcal{L}}{\partial W^{[1]}} = \frac{\partial \mathcal{L}}{\p
 
 > Chain rule: (hidden error) × (how pre-activation changes with weights).
 
-Since $Z^{[1]} = X W^{[1]} + b^{[1]}$, we have $\frac{\partial Z^{[1]}}{\partial W^{[1]}} = X$:
+Since $Z^{[1]} = X \cdot W^{[1]} + b^{[1]}$, we have $\frac{\partial Z^{[1]}}{\partial W^{[1]}} = X$:
 
 $$\boxed{\;dW^{[1]} = X^\top \cdot dZ^{[1]}\;}$$
 
