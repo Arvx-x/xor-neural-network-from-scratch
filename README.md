@@ -315,28 +315,266 @@ pip install torch --index-url https://download.pytorch.org/whl/cpu
 <details>
 <summary><strong>📐 Complete Backpropagation Derivation — NumPy Implementation</strong></summary>
 
-### A. Notation
+### A. Notation & Weight Matrices
 
-_Coming soon._
+We define the network parameters as follows:
+
+**Hidden-layer weight matrix** $W^{[1]}$ (2×2) and **output-layer weight vector** $W^{[2]}$ (2×1):
+
+```math
+W^{[1]} = \begin{bmatrix} w_{11} & w_{21} \\ w_{12} & w_{22} \end{bmatrix}, \qquad W^{[2]} = \begin{bmatrix} v_1 \\ v_2 \end{bmatrix}
+```
+
+- $w_{ij}$ are the weights connecting input $j$ to hidden neuron $i$.
+- $v_1, v_2$ are the weights connecting hidden neurons 1 and 2 to the output neuron.
+- $b^{[1]}$ (1×2) and $b^{[2]}$ (scalar) are the bias terms for the hidden and output layers respectively.
+- $\sigma(z) = \frac{1}{1+e^{-z}}$ is the sigmoid activation, with derivative $\sigma'(z) = \sigma(z)(1 - \sigma(z))$.
+- $m$ = number of training samples (4 for XOR).
+
+---
 
 ### B. Forward Pass — Full Derivation
 
-_Coming soon._
+#### Element-wise form
 
-### C. Loss Function Gradients
+Each hidden neuron computes a weighted sum of the inputs plus a bias:
 
-_Coming soon._
+```math
+z_1 = w_{11}\,x_1 + w_{12}\,x_2 + b_1^{[1]}
+```
+
+> Hidden neuron 1's pre-activation: weighted combination of both inputs.
+
+```math
+z_2 = w_{21}\,x_1 + w_{22}\,x_2 + b_2^{[1]}
+```
+
+> Hidden neuron 2's pre-activation: same structure, different weights.
+
+The output neuron takes the hidden activations $a_1 = \sigma(z_1)$, $a_2 = \sigma(z_2)$ and computes:
+
+```math
+z_3 = v_1\,a_1 + v_2\,a_2 + b^{[2]}
+```
+
+> Output pre-activation: weighted sum of hidden-layer activations.
+
+#### Matrix form
+
+The element-wise equations above can be written compactly as matrix operations:
+
+**Input → Hidden (Layer 1):**
+```math
+Z^{[1]} = X\,W^{[1]} + b^{[1]}
+```
+
+> Each row of $Z^{[1]}$ is the pre-activation vector for one training sample. $X$ is the (m×2) input matrix.
+
+```math
+A^{[1]} = \sigma(Z^{[1]})
+```
+
+> Apply sigmoid element-wise to get hidden-layer activations.
+
+**Hidden → Output (Layer 2):**
+```math
+Z^{[2]} = A^{[1]}\,W^{[2]} + b^{[2]}
+```
+
+> The output pre-activation, computed from hidden activations.
+
+```math
+\hat{y} = \sigma(Z^{[2]})
+```
+
+> Final prediction after sigmoid activation.
+
+---
+
+### C. Loss Function Gradient (MSE)
+
+We use Mean Squared Error as the loss:
+
+```math
+\mathcal{L} = \frac{1}{m}\sum_{i=1}^{m}(\hat{y}_i - y_i)^2
+```
+
+Taking the derivative with respect to the prediction $\hat{y}$:
+
+```math
+\frac{\partial \mathcal{L}}{\partial \hat{y}} = \frac{2}{m}(\hat{y} - y)
+```
+
+> This is the starting point of backpropagation — how much the loss changes when the prediction changes. The factor $\frac{2}{m}$ comes from differentiating the squared term and averaging over $m$ samples.
+
+We also note the derivative of the sigmoid output with respect to its pre-activation:
+
+```math
+\frac{\partial \hat{y}}{\partial Z^{[2]}} = \sigma'(Z^{[2]}) = \sigma(Z^{[2]})(1 - \sigma(Z^{[2]}))
+```
+
+> The sigmoid derivative, which will be used in the chain rule.
+
+---
 
 ### D. Output Layer Backpropagation
 
-_Coming soon._
+#### Step 1: Gradient of loss w.r.t. output pre-activation $Z^{[2]}$
+
+By the chain rule:
+
+```math
+\frac{\partial \mathcal{L}}{\partial Z^{[2]}} = \frac{\partial \mathcal{L}}{\partial \hat{y}} \cdot \frac{\partial \hat{y}}{\partial Z^{[2]}}
+```
+
+> Split into: (how loss changes with prediction) × (how prediction changes with pre-activation).
+
+Substituting:
+
+```math
+\frac{\partial \mathcal{L}}{\partial Z^{[2]}} = \frac{\partial \mathcal{L}}{\partial \hat{y}} \cdot \sigma'(Z^{[2]})
+```
+
+Since $\hat{y} = \sigma(Z^{[2]})$, the sigmoid derivative expands to $\hat{y}(1-\hat{y})$:
+
+```math
+\frac{\partial \mathcal{L}}{\partial Z^{[2]}} = \frac{\partial \mathcal{L}}{\partial \hat{y}} \cdot \sigma(Z^{[2]})(1 - \sigma(Z^{[2]}))
+```
+
+Substituting $\frac{\partial \mathcal{L}}{\partial \hat{y}} = \frac{2}{m}(\hat{y}-y)$ and $\sigma(Z^{[2]}) = \hat{y}$:
+
+```math
+\boxed{\;dZ^{[2]} = \frac{2}{m}(\hat{y} - y) \cdot \hat{y}(1-\hat{y})\;}
+```
+
+> **This is the output error signal (denoted $dZ^{[2]}$).** It encodes how wrong the prediction was, scaled by the sigmoid derivative. Note the $\hat{y}(1-\hat{y})$ term — this is what causes the **vanishing gradient problem** with MSE, because it approaches zero when $\hat{y}$ saturates near 0 or 1.
+
+#### Step 2: Gradient of loss w.r.t. output weights $W^{[2]}$
+
+```math
+\frac{\partial \mathcal{L}}{\partial W^{[2]}} = \frac{\partial \mathcal{L}}{\partial Z^{[2]}} \cdot \frac{\partial Z^{[2]}}{\partial W^{[2]}}
+```
+
+> Chain rule: (output error) × (how pre-activation changes with weights).
+
+Since $Z^{[2]} = A^{[1]} W^{[2]} + b^{[2]}$, we have $\frac{\partial Z^{[2]}}{\partial W^{[2]}} = A^{[1]}$. For correct matrix dimensions (we need the result to be the same shape as $W^{[2]}$, i.e. 2×1), we transpose $A^{[1]}$:
+
+```math
+\boxed{\;dW^{[2]} = (A^{[1]})^\top \cdot dZ^{[2]}\;}
+```
+
+> **Each entry measures how much a hidden activation contributed to the output error.** This is the outer product of the hidden activations and the output error signal.
+
+#### Step 3: Gradient of loss w.r.t. output bias $b^{[2]}$
+
+Since $\frac{\partial Z^{[2]}}{\partial b^{[2]}} = 1$, the bias gradient is simply the sum of the error signals across all samples:
+
+```math
+\boxed{\;db^{[2]} = \text{np.sum}(dZ^{[2]})\;}
+```
+
+> Bias has no input-dependent scaling — it collects the total error signal directly.
+
+---
 
 ### E. Hidden Layer Backpropagation
 
-_Coming soon._
+#### Step 1: Gradient of loss w.r.t. hidden activations $A^{[1]}$
 
-### F. Weight Update Equations
+To propagate the error backward through the output layer to the hidden layer, we apply the chain rule:
 
-_Coming soon._
+```math
+\frac{\partial \mathcal{L}}{\partial A^{[1]}} = \frac{\partial \mathcal{L}}{\partial Z^{[2]}} \cdot \frac{\partial Z^{[2]}}{\partial A^{[1]}}
+```
+
+> How much each hidden activation contributed to the output error.
+
+Since $Z^{[2]} = A^{[1]} W^{[2]} + b^{[2]}$, we have $\frac{\partial Z^{[2]}}{\partial A^{[1]}} = W^{[2]}$. For correct matrix dimensions (result must be same shape as $A^{[1]}$, i.e. m×2), we transpose $W^{[2]}$:
+
+```math
+\boxed{\;dA^{[1]} = dZ^{[2]} \cdot (W^{[2]})^\top\;}
+```
+
+> **The output error is distributed back to hidden neurons proportionally to their connection weights.** This is the essence of "backpropagation" — error flows backward through the weight matrix.
+
+#### Step 2: Gradient of loss w.r.t. hidden pre-activation $Z^{[1]}$
+
+Applying the chain rule again:
+
+```math
+\frac{\partial \mathcal{L}}{\partial Z^{[1]}} = \frac{\partial \mathcal{L}}{\partial A^{[1]}} \cdot \frac{\partial A^{[1]}}{\partial Z^{[1]}}
+```
+
+> We need to pass through the sigmoid activation of the hidden layer.
+
+Since $A^{[1]} = \sigma(Z^{[1]})$, we have $\frac{\partial A^{[1]}}{\partial Z^{[1]}} = \sigma'(Z^{[1]})$. Substituting:
+
+```math
+dZ^{[1]} = dA^{[1]} \cdot \sigma'(Z^{[1]})
+```
+
+Expanding the sigmoid derivative $\sigma'(Z^{[1]}) = \sigma(Z^{[1]})(1 - \sigma(Z^{[1]}))$:
+
+```math
+dZ^{[1]} = dZ^{[2]} \cdot (W^{[2]})^\top \cdot \sigma(Z^{[1]})(1 - \sigma(Z^{[1]}))
+```
+
+Since $\sigma(Z^{[1]}) = A^{[1]}$, this simplifies to:
+
+```math
+\boxed{\;dZ^{[1]} = dZ^{[2]} \cdot (W^{[2]})^\top \cdot A^{[1]} \odot (1 - A^{[1]})\;}
+```
+
+> **The hidden error signal.** It combines: (1) the output error propagated back through $W^{[2]}$, and (2) the sigmoid derivative of the hidden layer, which modulates the signal based on how saturated each hidden neuron is. The $\odot$ denotes element-wise multiplication.
+
+#### Step 3: Gradient of loss w.r.t. hidden weights $W^{[1]}$
+
+```math
+\frac{\partial \mathcal{L}}{\partial W^{[1]}} = \frac{\partial \mathcal{L}}{\partial Z^{[1]}} \cdot \frac{\partial Z^{[1]}}{\partial W^{[1]}}
+```
+
+> Chain rule: (hidden error) × (how pre-activation changes with weights).
+
+Since $Z^{[1]} = X W^{[1]} + b^{[1]}$, we have $\frac{\partial Z^{[1]}}{\partial W^{[1]}} = X$:
+
+```math
+\boxed{\;dW^{[1]} = X^\top \cdot dZ^{[1]}\;}
+```
+
+> **A weight is updated proportional to: (1) how wrong the neuron was (the error signal $dZ^{[1]}$) × (2) how much that weight contributed to the neuron's activation (the input $X$).** This is the fundamental principle — $\frac{\partial \mathcal{L}}{\partial w_{ij}} = (\text{local error}_j) \times (\text{input}_i)$.
+
+#### Step 4: Gradient of loss w.r.t. hidden bias $b^{[1]}$
+
+```math
+\boxed{\;db^{[1]} = \text{np.sum}(dZ^{[1]})\;}
+```
+
+> Same logic as the output bias — sum of error signals across all samples.
+
+---
+
+### F. Parameter Update Rules (Gradient Descent)
+
+After computing all gradients ($dW^{[1]}$, $db^{[1]}$, $dW^{[2]}$, $db^{[2]}$), we update each parameter by stepping in the direction that reduces the loss, scaled by learning rate $\alpha$:
+
+**Output layer:**
+```math
+W^{[2]} \leftarrow W^{[2]} - \alpha \cdot dW^{[2]}
+```
+```math
+b^{[2]} \leftarrow b^{[2]} - \alpha \cdot db^{[2]}
+```
+
+**Hidden layer:**
+```math
+W^{[1]} \leftarrow W^{[1]} - \alpha \cdot dW^{[1]}
+```
+```math
+b^{[1]} \leftarrow b^{[1]} - \alpha \cdot db^{[1]}
+```
+
+> Each parameter is nudged opposite to its gradient. The learning rate $\alpha$ controls the step size — too large causes overshooting and instability, too small causes impractically slow convergence.
+
+This completes one full iteration of backpropagation and gradient descent. The process repeats for the specified number of epochs until the loss converges.
 
 </details>
